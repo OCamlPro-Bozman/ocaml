@@ -20,7 +20,8 @@ type t = {
   dinfo_file: string;
   dinfo_line: int;
   dinfo_char_start: int;
-  dinfo_char_end: int
+  dinfo_char_end: int;
+  dinfo_loc: Location.t;     (* CAGO: add location *)
 }
 
 let none = {
@@ -28,7 +29,8 @@ let none = {
   dinfo_file = "";
   dinfo_line = 0;
   dinfo_char_start = 0;
-  dinfo_char_end = 0
+  dinfo_char_end = 0;
+  dinfo_loc = Location.none;
 }
 
 (* PR#5643: cannot use (==) because Debuginfo values are marshalled *)
@@ -50,7 +52,8 @@ let from_location kind loc =
     dinfo_char_end =
       if loc.loc_end.pos_fname = loc.loc_start.pos_fname
       then loc.loc_end.pos_cnum - loc.loc_start.pos_bol
-      else loc.loc_start.pos_cnum - loc.loc_start.pos_bol }
+      else loc.loc_start.pos_cnum - loc.loc_start.pos_bol;
+  dinfo_loc = loc}
 
 let from_call ev = from_location Dinfo_call ev.Lambda.lev_loc
 let from_raise ev = from_location Dinfo_raise ev.Lambda.lev_loc

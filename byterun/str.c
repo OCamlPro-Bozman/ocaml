@@ -26,8 +26,7 @@
 #endif
 
 CAMLexport mlsize_t caml_string_length(value s)
-{
-  mlsize_t temp;
+{  mlsize_t temp;
   temp = Bosize_val(s) - 1;
   Assert (Byte (s, temp - Byte (s, temp)) == 0);
   return temp - Byte (s, temp);
@@ -47,7 +46,7 @@ CAMLprim value caml_create_string(value len)
   if (size > Bsize_wsize (Max_wosize) - 1){
     caml_invalid_argument("String.create");
   }
-  return caml_alloc_string(size);
+  return caml_alloc_string_loc(size, PROF_STRING);
 }
 
 CAMLprim value caml_string_get(value str, value index)

@@ -104,7 +104,7 @@ let compile_implementation ?toplevel prefixname ppf (size, lam) =
     Emitaux.output_channel := oc;
     Emit.begin_assembly();
     Closure.intro size lam
-    ++ Cmmgen.compunit size
+    ++ Cmmgen.compunit size lam.Lambda.l_loc
     ++ List.iter (compile_phrase ppf) ++ (fun () -> ());
     (match toplevel with None -> () | Some f -> compile_genfuns ppf f);
 

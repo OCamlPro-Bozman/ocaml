@@ -9,7 +9,7 @@
 #(*                                                                     *)
 #(***********************************************************************)
 
-# $Id$
+# $Id: Makefile 12707 2012-07-13 11:23:13Z doligez $
 
 include ../config/Makefile
 
@@ -197,7 +197,7 @@ STDLIB_MLIS=../stdlib/*.mli \
 	../otherlibs/bigarray/bigarray.mli \
 	../otherlibs/num/num.mli
 
-all: exe lib generators manpages
+all: exe lib generators #manpages
 
 exe: $(OCAMLDOC)
 lib: $(OCAMLDOC_LIBCMA) $(OCAMLDOC_LIBCMI) $(ODOC_TEST)
@@ -249,11 +249,12 @@ odoc_see_lexer.ml: odoc_see_lexer.mll
 
 .SUFFIXES: .mll .mly .ml .mli .cmo .cmi .cmx .cmxs
 
-.ml.cmo:
-	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
+# .ml.cmo:
+# 	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
 
 .mli.cmi:
-	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
+#	# $(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
+	$(OCAMLOPT) $(OCAMLPP) $(COMPFLAGS) -c $<
 
 .ml.cmx:
 	$(OCAMLOPT) $(OCAMLPP) $(COMPFLAGS) -c $<

@@ -14,7 +14,7 @@
 
 (* Translation from closed lambda to C-- *)
 
-val compunit: int -> Clambda.ulambda -> Cmm.phrase list
+val compunit: int -> Location.t -> Clambda.ulambda -> Cmm.phrase list
 
 val apply_function: int -> Cmm.phrase
 val send_function: int -> Cmm.phrase

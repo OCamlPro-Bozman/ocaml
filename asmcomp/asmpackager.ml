@@ -147,6 +147,7 @@ let build_package_cmx members cmxfile =
           union(List.map (fun info -> info.ui_send_fun) units);
       ui_force_link =
           List.exists (fun info -> info.ui_force_link) units;
+      ui_profiling = (assert ((Hashtbl.length ui.ui_profiling) > 0); ui.ui_profiling);
     } in
   Compilenv.write_unit_info pkg_infos cmxfile
 

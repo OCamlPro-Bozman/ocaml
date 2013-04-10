@@ -98,3 +98,5 @@ let shared = ref false (* -shared *)
 let dlcode = ref true (* not -nodynlink *)
 
 let runtime_variant = ref "";;     (* -runtime-variant *)
+
+let array_tracing = ref false;;    (* trace memory block in the heap *)

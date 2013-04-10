@@ -17,9 +17,9 @@
 include config/Makefile
 include stdlib/StdlibModules
 
-CAMLC=boot/ocamlrun boot/ocamlc -nostdlib -I boot
+CAMLC=boot/ocamlrun boot/ocamlc -nostdlib -I boot -g
 CAMLOPT=boot/ocamlrun ./ocamlopt -nostdlib -I stdlib -I otherlibs/dynlink
-COMPFLAGS= -strict-sequence -warn-error A $(INCLUDES)
+COMPFLAGS=-bin-annot -strict-sequence -warn-error A $(INCLUDES)
 LINKFLAGS=
 
 CAMLYACC=boot/ocamlyacc
@@ -115,7 +115,7 @@ defaultentry:
 
 # Recompile the system using the bootstrap compiler
 all: runtime ocamlc ocamllex ocamlyacc ocamltools library ocaml \
-  otherlibraries ocamlbuild.byte $(CAMLP4OUT) $(DEBUGGER) ocamldoc
+  otherlibraries ocamlbuild.byte $(CAMLP4OUT) $(DEBUGGER)
 
 # Compile everything the first time
 world:
@@ -249,13 +249,12 @@ opt:
 
 # Native-code versions of the tools
 opt.opt: checkstack runtime core ocaml opt-core ocamlc.opt otherlibraries \
-	 $(DEBUGGER) ocamldoc ocamlbuild.byte $(CAMLP4OUT) \
+	 $(DEBUGGER) ocamlbuild.byte $(CAMLP4OUT) \
 	 ocamlopt.opt otherlibrariesopt ocamllex.opt \
-	 ocamltoolsopt ocamltoolsopt.opt ocamldoc.opt ocamlbuild.native \
-	 $(CAMLP4OPT)
+	 ocamltoolsopt ocamltoolsopt.opt ocamldoc.opt ocamlbuild.native
 
 base.opt: checkstack runtime core ocaml opt-core ocamlc.opt otherlibraries \
-	 ocamlbuild.byte $(CAMLP4OUT) $(DEBUGGER) ocamldoc ocamlopt.opt \
+	 ocamlbuild.byte $(CAMLP4OUT) $(DEBUGGER) ocamlopt.opt \
 	 otherlibrariesopt
 
 # Installation
@@ -288,7 +287,6 @@ install:
 	for i in $(OTHERLIBRARIES); do \
 	  (cd otherlibs/$$i; $(MAKE) install) || exit $$?; \
 	done
-	cd ocamldoc; $(MAKE) install
 	if test -f ocamlopt; then $(MAKE) installopt; else :; fi
 	if test -f debugger/ocamldebug; then (cd debugger; $(MAKE) install); \
 	   else :; fi
@@ -340,7 +338,7 @@ partialclean::
 ocamlc: compilerlibs/ocamlcommon.cma compilerlibs/ocamlbytecomp.cma $(BYTESTART)
 	$(CAMLC) $(LINKFLAGS) -o ocamlc \
            compilerlibs/ocamlcommon.cma compilerlibs/ocamlbytecomp.cma $(BYTESTART)
-	@sed -e 's|@compiler@|$$topdir/boot/ocamlrun $$topdir/ocamlc|' \
+	@sed -e 's|@compiler@|$$topdir/boot/ocamlrun $$topdir/ocamlc -bin-annot|' \
 	  driver/ocamlcomp.sh.in > ocamlcomp.sh
 	@chmod +x ocamlcomp.sh
 
@@ -672,11 +670,8 @@ alldepend::
 
 # OCamldoc
 
-ocamldoc: ocamlc ocamlyacc ocamllex otherlibraries
-	cd ocamldoc && $(MAKE) all
-
-ocamldoc.opt: ocamlc.opt ocamlyacc ocamllex
-	cd ocamldoc && $(MAKE) opt.opt
+ocamldoc.opt: ocamlc.opt ocamlyacc ocamllex	
+	cd ocamldoc && $(MAKE) clean opt.opt
 
 partialclean::
 	cd ocamldoc && $(MAKE) clean
@@ -723,8 +718,8 @@ alldepend::
 camlp4out: ocamlc ocamlbuild.byte
 	./build/camlp4-byte-only.sh
 
-camlp4opt: ocamlopt otherlibrariesopt ocamlbuild-mixed-boot ocamlbuild.native
-	./build/camlp4-native-only.sh
+# camlp4opt: ocamlopt otherlibrariesopt ocamlbuild-mixed-boot ocamlbuild.native
+# 	./build/camlp4-native-only.sh
 
 # Ocamlbuild
 

@@ -41,7 +41,8 @@ let current_unit =
     ui_curry_fun = [];
     ui_apply_fun = [];
     ui_send_fun = [];
-    ui_force_link = false }
+    ui_force_link = false;
+    ui_profiling = Hashtbl.create 1 (* CAGO: patch cmx format *)}
 
 let symbolname_for_pack pack name =
   match pack with
@@ -70,6 +71,7 @@ let reset ?packname name =
   current_unit.ui_apply_fun <- [];
   current_unit.ui_send_fun <- [];
   current_unit.ui_force_link <- false;
+  current_unit.ui_profiling <- Hashtbl.create 1; (* CAGO: patch cmx format *)
   structured_constants := []
 
 let current_unit_infos () =
@@ -77,6 +79,9 @@ let current_unit_infos () =
 
 let current_unit_name () =
   current_unit.ui_name
+
+let update_profiling dbgs =
+  current_unit.ui_profiling <- dbgs
 
 let make_symbol ?(unitname = current_unit.ui_symbol) idopt =
   let prefix = "caml" ^ unitname in

@@ -30,20 +30,22 @@ let rec split_list n l =
     | a::l -> let (l1, l2) = split_list (n-1) l in (a::l1, l2)
   end
 
-let rec build_closure_env env_param pos = function
+let mk_dbg loc = Debuginfo.from_location Debuginfo.Dinfo_call loc
+
+let rec build_closure_env env_param pos loc = function
     [] -> Tbl.empty
   | id :: rem ->
-      Tbl.add id (Uprim(Pfield pos, [Uvar env_param], Debuginfo.none))
-              (build_closure_env env_param (pos+1) rem)
+      Tbl.add id (Uprim(Pfield pos, [Uvar env_param], mk_dbg loc))
+              (build_closure_env env_param (pos+1) loc rem)
 
 (* Auxiliary for accessing globals.  We change the name of the global
    to the name of the corresponding asm symbol.  This is done here
    and no longer in Cmmgen so that approximations stored in .cmx files
    contain the right names if the -for-pack option is active. *)
 
-let getglobal id =
+let getglobal id loc =
   Uprim(Pgetglobal (Ident.create_persistent (Compilenv.symbol_for_global id)),
-        [], Debuginfo.none)
+        [], mk_dbg loc)
 
 (* Check if a variable occurs in a [clambda] term. *)
 
@@ -376,7 +378,8 @@ let bind_params params args body =
 (* Check if a lambda term is ``pure'',
    that is without side-effects *and* not containing function definitions *)
 
-let rec is_pure = function
+let rec is_pure lam =
+  match lam.l_desc with
     Lvar v -> true
   | Lconst cst -> true
   | Lprim((Psetglobal _ | Psetfield _ | Psetfloatfield _ | Pduprecord _ |
@@ -388,12 +391,12 @@ let rec is_pure = function
 
 (* Generate a direct application *)
 
-let direct_apply fundesc funct ufunct uargs =
+let direct_apply fundesc funct ufunct uargs loc =
   let app_args =
     if fundesc.fun_closed then uargs else uargs @ [ufunct] in
   let app =
     match fundesc.fun_inline with
-      None -> Udirect_apply(fundesc.fun_label, app_args, Debuginfo.none)
+      None -> Udirect_apply(fundesc.fun_label, app_args, mk_dbg loc)
     | Some(params, body) -> bind_params params app_args body in
   (* If ufunct can contain side-effects or function definitions,
      we must make sure that it is evaluated exactly once.
@@ -483,7 +486,9 @@ let close_approx_var fenv cenv id =
 let close_var fenv cenv id =
   let (ulam, app) = close_approx_var fenv cenv id in ulam
 
-let rec close fenv cenv = function
+let rec close fenv cenv lam =
+  let l_loc = lam.l_loc in
+  match lam.l_desc with
     Lvar id ->
       close_approx_var fenv cenv id
   | Lconst cst ->
@@ -493,22 +498,23 @@ let rec close fenv cenv = function
       | Const_pointer n -> (Uconst (cst, None), Value_constptr n)
       | _ -> (Uconst (cst, Some (Compilenv.new_structured_constant cst true)), Value_unknown)
       end
-  | Lfunction(kind, params, body) as funct ->
-      close_one_function fenv cenv (Ident.create "fun") funct
+  | Lfunction(kind, params, body) (* as funct *) ->
+      close_one_function fenv cenv (Ident.create "fun") lam l_loc
 
     (* We convert [f a] to [let a' = a in fun b c -> f a' b c]
        when fun_arity > nargs *)
-  | Lapply(funct, args, loc) ->
+  | Lapply(funct, args) ->
+      let funct_loc = funct.l_loc in
       let nargs = List.length args in
       begin match (close fenv cenv funct, close_list fenv cenv args) with
         ((ufunct, Value_closure(fundesc, approx_res)),
          [Uprim(Pmakeblock(_, _), uargs, _)])
         when List.length uargs = - fundesc.fun_arity ->
-          let app = direct_apply fundesc funct ufunct uargs in
+          let app = direct_apply fundesc funct ufunct uargs l_loc in
           (app, strengthen_approx app approx_res)
       | ((ufunct, Value_closure(fundesc, approx_res)), uargs)
         when nargs = fundesc.fun_arity ->
-          let app = direct_apply fundesc funct ufunct uargs in
+          let app = direct_apply fundesc funct ufunct uargs l_loc in
           (app, strengthen_approx app approx_res)
 
       | ((ufunct, Value_closure(fundesc, approx_res)), uargs)
@@ -525,12 +531,12 @@ let rec close fenv cenv = function
                 (Ulet ( arg1, arg2, body))
         in
         let internal_args =
-          (List.map (fun (arg1, arg2) -> Lvar arg1) first_args)
-          @ (List.map (fun arg -> Lvar arg ) final_args)
+          (List.map (fun (arg1, arg2) -> mk_lam (Lvar arg1)) first_args)
+          @ (List.map (fun arg -> mk_lam (Lvar arg)) final_args)
         in
         let (new_fun, approx) = close fenv cenv
-          (Lfunction(
-            Curried, final_args, Lapply(funct, internal_args, loc)))
+          ({l_loc; l_desc=Lfunction(
+            Curried, final_args, {l_loc = funct_loc; l_desc = Lapply(funct, internal_args)})})
         in
         let new_fun = iter first_args new_fun in
         (new_fun, approx)
@@ -538,16 +544,16 @@ let rec close fenv cenv = function
       | ((ufunct, Value_closure(fundesc, approx_res)), uargs)
         when fundesc.fun_arity > 0 && nargs > fundesc.fun_arity ->
           let (first_args, rem_args) = split_list fundesc.fun_arity uargs in
-          (Ugeneric_apply(direct_apply fundesc funct ufunct first_args,
-                          rem_args, Debuginfo.none),
+          (Ugeneric_apply(direct_apply fundesc funct ufunct first_args l_loc,
+                          rem_args, mk_dbg l_loc),
            Value_unknown)
       | ((ufunct, _), uargs) ->
-          (Ugeneric_apply(ufunct, uargs, Debuginfo.none), Value_unknown)
+          (Ugeneric_apply(ufunct, uargs, mk_dbg l_loc), Value_unknown)
       end
-  | Lsend(kind, met, obj, args, _) ->
+  | Lsend(kind, met, obj, args) ->
       let (umet, _) = close fenv cenv met in
       let (uobj, _) = close fenv cenv obj in
-      (Usend(kind, umet, uobj, close_list fenv cenv args, Debuginfo.none),
+      (Usend(kind, umet, uobj, close_list fenv cenv args, mk_dbg l_loc),
        Value_unknown)
   | Llet(str, id, lam, body) ->
       let (ulam, alam) = close_named fenv cenv id lam in
@@ -564,11 +570,11 @@ let rec close fenv cenv = function
       end
   | Lletrec(defs, body) ->
       if List.for_all
-           (function (id, Lfunction(_, _, _)) -> true | _ -> false)
+           (function (id, {l_desc = Lfunction(_, _, _)}) -> true | _ -> false)
            defs
       then begin
         (* Simple case: only function definitions *)
-        let (clos, infos) = close_functions fenv cenv defs in
+        let (clos, infos) = close_functions fenv cenv defs l_loc in
         let clos_ident = Ident.create "clos" in
         let fenv_body =
           List.fold_right
@@ -596,14 +602,14 @@ let rec close fenv cenv = function
       end
   | Lprim(Pdirapply loc,[funct;arg])
   | Lprim(Prevapply loc,[arg;funct]) ->
-      close fenv cenv (Lapply(funct, [arg], loc))
-  | Lprim(Pgetglobal id, []) as lam ->
+      close fenv cenv ({l_loc; l_desc = Lapply(funct, [arg])})
+  | Lprim(Pgetglobal id, []) ->
       check_constant_result lam
-                            (getglobal id)
+                            (getglobal id l_loc)
                             (Compilenv.global_approx id)
   | Lprim(Pmakeblock(tag, mut) as prim, lams) ->
       let (ulams, approxs) = List.split (List.map (close fenv cenv) lams) in
-      (Uprim(prim, ulams, Debuginfo.none),
+      (Uprim(prim, ulams, mk_dbg l_loc),
        begin match mut with
            Immutable -> Value_tuple(Array.of_list approxs)
          | Mutable -> Value_unknown
@@ -614,18 +620,18 @@ let rec close fenv cenv = function
         match approx with
           Value_tuple a when n < Array.length a -> a.(n)
         | _ -> Value_unknown in
-      check_constant_result lam (Uprim(Pfield n, [ulam], Debuginfo.none)) fieldapprox
-  | Lprim(Psetfield(n, _), [Lprim(Pgetglobal id, []); lam]) ->
+      check_constant_result lam (Uprim(Pfield n, [ulam], mk_dbg l_loc)) fieldapprox
+  | Lprim(Psetfield(n, _), [{l_desc=Lprim(Pgetglobal id, [])}; lam]) ->
       let (ulam, approx) = close fenv cenv lam in
       (!global_approx).(n) <- approx;
-      (Uprim(Psetfield(n, false), [getglobal id; ulam], Debuginfo.none),
+      (Uprim(Psetfield(n, false), [getglobal id l_loc; ulam], mk_dbg l_loc),
        Value_unknown)
-  | Lprim(Praise, [Levent(arg, ev)]) ->
+  | Lprim(Praise, [{l_desc=Levent(arg, ev)}]) ->
       let (ulam, approx) = close fenv cenv arg in
       (Uprim(Praise, [ulam], Debuginfo.from_raise ev),
        Value_unknown)
   | Lprim(p, args) ->
-      simplif_prim p (close_list_approx fenv cenv args) Debuginfo.none
+      simplif_prim p (close_list_approx fenv cenv args) (mk_dbg l_loc)
   | Lswitch(arg, sw) ->
 (* NB: failaction might get copied, thus it should be some Lstaticraise *)
       let (uarg, _) = close fenv cenv arg in
@@ -694,29 +700,30 @@ and close_list_approx fenv cenv = function
       let (ulams, approxs) = close_list_approx fenv cenv rem in
       (ulam :: ulams, approx :: approxs)
 
-and close_named fenv cenv id = function
-    Lfunction(kind, params, body) as funct ->
-      close_one_function fenv cenv id funct
-  | lam ->
+and close_named fenv cenv id lam =
+  match lam.l_desc with
+    Lfunction(kind, params, body) (* as funct *) ->
+      close_one_function fenv cenv id lam lam.l_loc
+  | _ ->
       close fenv cenv lam
 
 (* Build a shared closure for a set of mutually recursive functions *)
 
-and close_functions fenv cenv fun_defs =
+and close_functions fenv cenv fun_defs loc =
   (* Update and check nesting depth *)
   incr function_nesting_depth;
   let initially_closed =
     !function_nesting_depth < excessive_function_nesting_depth in
   (* Determine the free variables of the functions *)
   let fv =
-    IdentSet.elements (free_variables (Lletrec(fun_defs, lambda_unit))) in
+    IdentSet.elements (free_variables ({l_loc = loc; l_desc = Lletrec(fun_defs, lambda_unit)})) in
   (* Build the function descriptors for the functions.
      Initially all functions are assumed not to need their environment
      parameter. *)
   let uncurried_defs =
     List.map
       (function
-          (id, Lfunction(kind, params, body)) ->
+          (id, {l_desc = Lfunction(kind, params, body)}) ->
             let label = Compilenv.make_symbol (Some (Ident.unique_name id)) in
             let arity = List.length params in
             let fundesc =
@@ -748,18 +755,18 @@ and close_functions fenv cenv fun_defs =
   let useless_env = ref initially_closed in
   (* Translate each function definition *)
   let clos_fundef (id, params, body, fundesc) env_pos =
-    let dbg = match body with
+    let dbg = match body.l_desc with
       | Levent (_,({lev_kind=Lev_function} as ev)) -> Debuginfo.from_call ev
       | _ -> Debuginfo.none in
     let env_param = Ident.create "env" in
     let cenv_fv =
-      build_closure_env env_param (fv_pos - env_pos) fv in
+      build_closure_env env_param (fv_pos - env_pos) loc fv in
     let cenv_body =
       List.fold_right2
         (fun (id, params, arity, body) pos env ->
           Tbl.add id (Uoffset(Uvar env_param, pos - env_pos)) env)
         uncurried_defs clos_offsets cenv_fv in
-    let (ubody, approx) = close fenv_rec cenv_body body in
+    let (ubody, approx) = close fenv_rec cenv_body body in (* XX CAGO TODO*)
     if !useless_env && occurs_var env_param ubody then useless_env := false;
     let fun_params = if !useless_env then params else params @ [env_param] in
     ({ label  = fundesc.fun_label;
@@ -794,8 +801,8 @@ and close_functions fenv cenv fun_defs =
 
 (* Same, for one non-recursive function *)
 
-and close_one_function fenv cenv id funct =
-  match close_functions fenv cenv [id, funct] with
+and close_one_function fenv cenv id funct loc =
+  match close_functions fenv cenv [id, funct] loc with
       ((Uclosure([f], _) as clos),
        [_, _, (Value_closure(fundesc, _) as approx)]) ->
         (* See if the function can be inlined *)

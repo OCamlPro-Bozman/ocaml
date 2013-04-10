@@ -91,6 +91,19 @@ let extract_crc_implementations () =
 let lib_ccobjs = ref []
 let lib_ccopts = ref []
 
+let dbgs : (int, Location.t) Hashtbl.t = Hashtbl.create 43
+
+let dump filename =
+  let file = open_out (Printf.sprintf "%s.prof" (String.lowercase filename)) in
+  Marshal.to_channel file dbgs [];
+  close_out file
+
+(* let update_profs tolink = *)
+(*   List.iter (fun (ui, _, _) -> *)
+(*     Printf.eprintf " XXX %s\n%!" ui.ui_name; *)
+(*     Hashtbl.iter (fun id dbg -> Hashtbl.replace dbgs id dbg.Debuginfo.dinfo_loc) ui.ui_profiling; *)
+(*   ) tolink *)
+
 let add_ccobjs l =
   if not !Clflags.no_auto_link then begin
     lib_ccobjs := l.lib_ccobjs @ !lib_ccobjs;
@@ -158,6 +171,9 @@ let read_file obj_name =
     (* This is a .cmx file. It must be linked in any case.
        Read the infos to see which modules it requires. *)
     let (info, crc) = read_unit_info file_name in
+    (* CAGO: adding profiling information from cmx *)
+    Hashtbl.iter (fun id dbg ->
+      Hashtbl.replace dbgs id dbg.Debuginfo.dinfo_loc) info.ui_profiling;
     Unit (file_name,info,crc)
   end
   else if Filename.check_suffix file_name ".cmxa" then begin
@@ -166,6 +182,11 @@ let read_file obj_name =
       with Compilenv.Error(Not_a_unit_info _) ->
         raise(Error(Not_an_object_file file_name))
     in
+    (* CAGO: adding profiling information from cmxa *)
+    List.iter (fun (ui, _) ->
+      Hashtbl.iter (fun id dbg ->
+        Hashtbl.replace dbgs id dbg.Debuginfo.dinfo_loc) ui.ui_profiling;
+    ) infos.lib_units;
     Library (file_name,infos)
   end
   else raise(Error(Not_an_object_file file_name))
@@ -226,7 +247,10 @@ let make_startup_file ppf filename units_list =
   compile_phrase(Cmmgen.code_segment_table ("_startup" :: name_list));
   compile_phrase
     (Cmmgen.frame_table("_startup" :: "_system" :: name_list));
-
+  List.iter (fun (ui, _, _) ->
+    Hashtbl.iter (fun id dbg ->
+      Hashtbl.replace dbgs id dbg.Debuginfo.dinfo_loc) ui.ui_profiling;
+  ) units_list;
   Emit.end_assembly();
   close_out oc
 
@@ -329,6 +353,7 @@ let link ppf objfiles output_name =
   try
     call_linker (List.map object_file_name objfiles) startup_obj output_name;
     if not !Clflags.keep_startup_file then remove_file startup;
+    dump output_name;
     remove_file startup_obj
   with x ->
     remove_file startup_obj;

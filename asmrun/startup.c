@@ -53,7 +53,7 @@ static void init_atoms(void)
   struct code_fragment * cf;
 
   for (i = 0; i < 256; i++) {
-    caml_atom_table[i] = Make_header(0, i, Caml_white);
+    caml_atom_table[i] = Make_header(0, i, Caml_white, PROF_TODO);
   }
   if (caml_page_table_add(In_static_data,
                           caml_atom_table, caml_atom_table + 256) != 0)
@@ -117,6 +117,7 @@ static void scanmult (char *opt, uintnat *var)
   }
 }
 
+extern int heap_profiling;
 static void parse_camlrunparam(void)
 {
   char *opt = getenv ("OCAMLRUNPARAM");
@@ -137,9 +138,26 @@ static void parse_camlrunparam(void)
       case 'b': caml_record_backtrace(Val_true); break;
       case 'p': caml_parser_trace = 1; break;
       case 'a': scanmult (opt, &p); caml_set_allocation_policy (p); break;
+      case 'm': heap_profiling = 1; break;
       }
     }
   }
+}
+
+/* * caml_minor_allocation_tracing_array = NULL; */
+/* uint64_t* caml_minor_allocation_tracing_array_end = NULL; */
+#include "config.h"      
+uint64* caml_major_tracing_array = NULL;
+uint64* caml_major_tracing_array_end = NULL;
+uint64 tracing_array_len = (1 << 21);
+
+static init_tracing_arrays (void) {
+  /* ## major heap tracing */
+  caml_major_tracing_array =
+    (uint64*) calloc(tracing_array_len, 1);
+  if (!caml_major_tracing_array) abort();
+  caml_major_tracing_array_end =
+    caml_major_tracing_array +(tracing_array_len / sizeof(uint64));
 }
 
 /* These are termination hooks used by the systhreads library */
@@ -166,6 +184,7 @@ void caml_main(char **argv)
 #endif
   caml_top_of_stack = &tos;
   parse_camlrunparam();
+  init_tracing_arrays();	/* CAGO: initialize tracing arrays */
   caml_init_gc (minor_heap_init, heap_size_init, heap_chunk_init,
                 percent_free_init, max_percent_free_init);
   init_atoms();

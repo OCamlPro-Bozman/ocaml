@@ -458,6 +458,12 @@ let emit_instr fallthrough i =
           let lbl_call_gc = new_label() in
           let lbl_frame = record_frame_label i.live Debuginfo.none in
           `	jb	{emit_label lbl_call_gc}\n`;
+          (* CAGO: PATCH array tracing start *)
+          if !Clflags.array_tracing then begin
+            (* CAGO TODO XX *)
+
+          end;
+          (* CAGO: PATCH array tracing end *)
           `	leaq	8(%r15), {emit_reg i.res.(0)}\n`;
           call_gc_sites :=
             { gc_lbl = lbl_call_gc;
@@ -465,11 +471,11 @@ let emit_instr fallthrough i =
               gc_frame = lbl_frame } :: !call_gc_sites
         end else begin
           begin match n with
-            16  -> `	{emit_call "caml_alloc1"}\n`
-          | 24 -> `	{emit_call "caml_alloc2"}\n`
-          | 32 -> `	{emit_call "caml_alloc3"}\n`
-          | _  -> `	movq	${emit_int n}, %rax\n`;
-                  `	{emit_call "caml_allocN"}\n`
+            16  -> `	{emit_call "caml_alloc1"}\n` (* CAGO: PATCH TODO specific alloc function *)
+          | 24 -> `	{emit_call "caml_alloc2"}\n` (* CAGO: PATCH TODO specific alloc function *)
+          | 32 -> `	{emit_call "caml_alloc3"}\n` (* CAGO: PATCH TODO specific alloc function *)
+          | _  -> `	movq	${emit_int n}, %rax\n`; (* CAGO: PATCH TODO specific alloc function *)
+                  `	{emit_call "caml_allocN"}\n` (* CAGO: PATCH TODO specific alloc function *)
           end;
           `{record_frame i.live Debuginfo.none}	leaq	8(%r15), {emit_reg i.res.(0)}\n`
         end

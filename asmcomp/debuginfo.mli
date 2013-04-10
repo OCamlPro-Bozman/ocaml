@@ -17,7 +17,8 @@ type t = private {
   dinfo_file: string;
   dinfo_line: int;
   dinfo_char_start: int;
-  dinfo_char_end: int
+  dinfo_char_end: int;
+  dinfo_loc: Location.t;
 }
 
 val none: t
