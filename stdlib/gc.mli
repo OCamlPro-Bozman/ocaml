@@ -272,3 +272,5 @@ val create_alarm : (unit -> unit) -> alarm
 val delete_alarm : alarm -> unit
 (** [delete_alarm a] will stop the calls to the function associated
    to [a].  Calling [delete_alarm a] again has no effect. *)
+
+external dump_heap : unit -> unit = "dump_heap"
