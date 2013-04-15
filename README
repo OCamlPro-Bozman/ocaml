@@ -1,0 +1,82 @@
+     +-----------------+-----------------+--------+----------+
+     | PROFILING INFO  |     WOSIZE      | COLOR  |    TAG   |
+     +-----------------+-----------------+--------+----------+
+bits 63              43 42             10 9      8 7         0
+     +-----------------+-----------------+--------+----------+
+     +     21bits      +      33bits     +  2bits +  10bits  +
+
+
+=== OCaml 4.00.1 with memory profiling support  version 0.1
+
+ChangeLog:
+  * version 0.2: /!\ bytecode and native /!\
+   - Dump heap image, dump profiling information (especially location information)
+     and then draw simple graphs using hp2ps
+
+  * version 0.1: /!\ bytecode only /!\
+   - Dump heap image, dump profiling information (especially location information)
+     and then draw simple graphs using hp2ps
+
+
+=== OCamlmemprof
+
+Dump a memory image of the application on the disk which contains modified memory 
+representation (no overhead here, just reduced the wosize field, see picture above), 
+dump also a file "exe.prof" which contains locations informations of blocks.
+
+Then, you can use the profiler in the memprof/ directory to re-type the heap and obtain
+a simple graph.
+
+=== How to use the compiler and the profiler
+
+1- Fork the compiler available on github
+        > git clone https://github.com/cago/ocaml/
+        > git checkout 4.00.1+memprof
+  With OPAM:
+       > opam remote add memprof https://github.com/cago/opam-repository --kind=git
+       > opam switch 4.00.1+memprof
+
+2- Compile OCaml and install: bytecode and native !
+        > ./configure -prefix /path/
+        > make world world.opt
+
+3- Then, ocamlc and ocamlrun is now available. Compile your application and to dump the heap, you have 3 choices:
+
+  * Using OCAMLRUNPARAM=m to dump the heap image after each major garbage collection
+   e.g.: OCAMLRUNPARAM=m ocamlc -o exe my_project.ml
+  
+  * Using a signal: when receiving a HUP signal, the application will dump its
+   memory on disk for future profiling.
+
+  * Using the dumping function in the GC module:
+      Gc.dump_heap ()
+    e.g.:
+        let x = ...
+        ...
+        Gc.dump_heap ();
+        ...
+
+ After that, you have a file which looks like :
+   heap.dump.<pid-number>.<image-number>
+
+ 
+4- Finally, use the profiler:
+  * on several heap images
+   > profiler -prof my_exe.prof -heaps 1432
+  * on one heap image
+   > profiler -prof my_exe.prof -heap heap.dump.1432.5
+
+  If you want more details about location and type, you can add the -loc option:
+  * on several heap images
+   > profiler -loc -prof my_exe.prof -heaps 1432
+  * on one heap image
+   > profiler -loc -prof my_exe.prof -heap heap.dump.1432.5
+ 
+
+=== Contact http://www.ocamlpro.com
+
+If you have any question or bug report, you can use the github bug tracker:
+  https://github.com/cago/ocaml/
+
+Or contact me:
+ cagdas.bozman@ocamlpro.com
