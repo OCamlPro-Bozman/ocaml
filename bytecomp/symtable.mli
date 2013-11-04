@@ -19,7 +19,7 @@ open Cmo_format
 (* Functions for batch linking *)
 
 val init: unit -> unit
-val patch_object: string -> (reloc_info * int) list -> unit
+val patch_object: string -> (reloc_info * int) list -> int -> unit
 val require_primitive: string -> unit
 val initial_global_table: unit -> Obj.t array
 val output_global_map: out_channel -> unit
@@ -27,6 +27,7 @@ val output_primitive_names: out_channel -> unit
 val output_primitive_table: out_channel -> unit
 val data_global_map: unit -> Obj.t
 val data_primitive_names: unit -> string
+val output_location_table: out_channel -> unit
 
 (* Functions for the toplevel *)
 
@@ -44,6 +45,12 @@ val current_state: unit -> global_map
 val restore_state: global_map -> unit
 val hide_additions: global_map -> unit
 val filter_global_map: (Ident.t -> bool) -> global_map -> global_map
+
+(* ... *)
+
+val locid_initial_offset: int
+val register_locations: (reloc_info * int) list -> int
+val reset_location_table: unit -> unit
 
 (* Error report *)
 

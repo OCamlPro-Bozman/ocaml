@@ -249,6 +249,10 @@ type shape =
   | Switch
   | Closurerec
   | Pubmet
+  | Uint_Uint_Uint
+  | Uint_Uint_Disp
+  | Closurerec_with_loc
+
 ;;
 
 let op_shapes = [
@@ -318,6 +322,15 @@ let op_shapes = [
   opMAKEBLOCK1, Uint;
   opMAKEBLOCK2, Uint;
   opMAKEBLOCK3, Uint;
+  opMAKEBLOCK_WITH_LOC, Uint_Uint_Uint;
+  opMAKEBLOCK1_WITH_LOC, Uint_Uint;
+  opMAKEBLOCK2_WITH_LOC, Uint_Uint;
+  opMAKEBLOCK3_WITH_LOC, Uint_Uint;
+  opMAKEFLOATBLOCK_WITH_LOC, Uint_Uint;
+  opGETFLOATFIELD_WITH_LOC, Uint_Uint;
+  opGRAB_WITH_LOC, Uint_Uint;
+  opCLOSURE_WITH_LOC, Uint_Uint_Disp;
+  opCLOSUREREC_WITH_LOC, Closurerec_with_loc;
   opMAKEFLOATBLOCK, Uint;
   opGETFIELD0, Nothing;
   opGETFIELD1, Nothing;
@@ -422,6 +435,24 @@ let print_instr ic =
   | Sint -> print_int (inputs ic)
   | Uint_Uint
      -> print_int (inputu ic); print_string ", "; print_int (inputu ic)
+  | Uint_Uint_Uint ->
+    print_int (inputu ic); print_string ", ";
+    print_int (inputu ic); print_string ", "; print_int (inputu ic)
+  | Uint_Uint_Disp ->
+    print_int (inputu ic); print_string ", ";
+    let p = currpc ic in print_int (p + inputs ic);
+     print_string ", "; print_int (inputu ic)
+  | Closurerec_with_loc ->
+    let nfuncs = inputu ic in
+    let nvars = inputu ic in
+    let orig = currpc ic in
+    let locid = inputu ic in
+    print_int nvars;
+    for i = 0 to nfuncs - 1 do
+      print_string ", ";
+      print_int (orig + inputs ic);
+    done;
+    print_string ", "; print_int locid;
   | Disp -> let p = currpc ic in print_int (p + inputs ic)
   | Uint_Disp
      -> print_int (inputu ic); print_string ", ";
@@ -482,6 +513,7 @@ let print_reloc (info, pos) =
   | Reloc_getglobal id -> printf "require    %s\n" (Ident.name id)
   | Reloc_setglobal id -> printf "provide    %s\n" (Ident.name id)
   | Reloc_primitive s -> printf "prim    %s\n" s
+  | Reloc_locid loc -> printf "loc    TODO\n" (* CAGO FIXME *)
 
 (* Print a .cmo file *)
 

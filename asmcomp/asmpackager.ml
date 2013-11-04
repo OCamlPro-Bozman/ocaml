@@ -95,6 +95,7 @@ let make_package_object ppf members targetobj targetname coercion =
         | PM_intf -> None
         | PM_impl _ -> Some(Ident.create_persistent m.pm_name))
       members in
+
   Asmgen.compile_implementation
     (chop_extension_if_any objtemp) ppf
     (Translmod.transl_store_package
@@ -107,7 +108,7 @@ let make_package_object ppf members targetobj targetname coercion =
     Ccomp.call_linker Ccomp.Partial targetobj (objtemp :: objfiles) ""
   in
   remove_file objtemp;
-  if not ok then raise(Error Linking_error)
+ if not ok then raise(Error Linking_error)
 
 (* Make the .cmx file for the package *)
 
@@ -147,7 +148,6 @@ let build_package_cmx members cmxfile =
           union(List.map (fun info -> info.ui_send_fun) units);
       ui_force_link =
           List.exists (fun info -> info.ui_force_link) units;
-      ui_profiling = (assert ((Hashtbl.length ui.ui_profiling) > 0); ui.ui_profiling);
     } in
   Compilenv.write_unit_info pkg_infos cmxfile
 

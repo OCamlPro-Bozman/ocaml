@@ -135,19 +135,9 @@ and slot_for_c_prim name =
   out_int 0
 
 (* CAGO: PATCH *)
-let u_name = ref "" (* unit_name *)
-
-(* Generate Random integer between 0 and 2^22 *)
-let igen loc =
-(* if we don't use this digest, ocamlc will never bootstrap  *)
-  let open Location in let open Lexing in
-  let hash_loc = Hashtbl.hash (loc.loc_start.pos_lnum + loc.loc_start.pos_cnum + loc.loc_end.pos_cnum) in
-  let hash_unit_name = Hashtbl.hash (Digest.string !u_name) in
-  Random.init (hash_loc + hash_unit_name);
-  Random.int 2097152 (* 2^21*) (* 4194304 = 2^22*)
-
-let locs : (int, Location.t) Hashtbl.t = Hashtbl.create 11
-let save_loc id loc = Hashtbl.replace locs id loc
+let slot_for_locid loc =
+  enter (Reloc_locid loc);
+  out_int 0
 
 (* *******  *)
 
@@ -202,17 +192,11 @@ let emit_instr = function
   | Kreturn n -> out opRETURN; out_int n
   | Krestart -> out opRESTART
   | Kgrab(n, loc) ->
-    let id = igen loc in
-    save_loc id loc;
-    out opGRAB_WITH_LOC; out_int id; out_int n
+    out opGRAB_WITH_LOC; slot_for_locid loc; out_int n
   | Kclosure(lbl, n, loc) ->
-    let id = igen loc in
-    save_loc id loc;
-    out opCLOSURE_WITH_LOC; out_int n; out_label lbl; out_int id
+    out opCLOSURE_WITH_LOC; out_int n; out_label lbl; slot_for_locid loc
   | Kclosurerec(lbls, n, loc) ->
-    let id = igen loc in
-    save_loc id loc;
-    out opCLOSUREREC_WITH_LOC; out_int (List.length lbls); out_int n; out_int id;
+    out opCLOSUREREC_WITH_LOC; out_int (List.length lbls); out_int n; slot_for_locid loc;
     let org = !out_position in
     List.iter (out_label_with_orig org) lbls
   | Koffsetclosure ofs ->
@@ -239,24 +223,18 @@ let emit_instr = function
           out opGETGLOBAL; slot_for_literal sc
       end
   | Kmakeblock(n, t, loc) ->
-    let id = igen loc in
-    save_loc id loc;
     if n = 0 then
       if t = 0 then out opATOM0 else (out opATOM; out_int t)
-      else if n < 4 then (out(opMAKEBLOCK1_WITH_LOC + n - 1); out_int t; out_int id)
-    else (out opMAKEBLOCK_WITH_LOC; out_int n; out_int t; out_int id)
+      else if n < 4 then (out(opMAKEBLOCK1_WITH_LOC + n - 1); out_int t; slot_for_locid loc)
+    else (out opMAKEBLOCK_WITH_LOC; out_int n; out_int t; slot_for_locid loc)
   | Kgetfield n ->
       if n < 4 then out(opGETFIELD0 + n) else (out opGETFIELD; out_int n)
   | Ksetfield n ->
       if n < 4 then out(opSETFIELD0 + n) else (out opSETFIELD; out_int n)
   | Kmakefloatblock(n, loc) ->
-    let id = igen loc in
-    save_loc id loc;
-    if n = 0 then out opATOM0 else (out opMAKEFLOATBLOCK_WITH_LOC; out_int n; out_int id)
+    if n = 0 then out opATOM0 else (out opMAKEFLOATBLOCK_WITH_LOC; out_int n; slot_for_locid loc)
   | Kgetfloatfield(n, loc) ->
-    let id = igen loc in
-    save_loc id loc;
-    out opGETFLOATFIELD_WITH_LOC; out_int n; out_int id
+    out opGETFLOATFIELD_WITH_LOC; out_int n; slot_for_locid loc
   | Ksetfloatfield n -> out opSETFLOATFIELD; out_int n
   | Kvectlength -> out opVECTLENGTH
   | Kgetvectitem -> out opGETVECTITEM
@@ -386,7 +364,6 @@ let rec emit = function
 
 let to_file outchan unit_name code =
   init();
-  u_name := unit_name;
   output_string outchan cmo_magic_number;
   let pos_depl = pos_out outchan in
   output_binary_int outchan 0;
@@ -409,8 +386,7 @@ let to_file outchan unit_name code =
       cu_primitives = List.map Primitive.byte_name !Translmod.primitive_declarations;
       cu_force_link = false;
       cu_debug = pos_debug;
-      cu_debugsize = size_debug;
-      cu_profiling = locs} in
+      cu_debugsize = size_debug } in
   init();                               (* Free out_buffer and reloc_info *)
   Btype.cleanup_abbrev ();              (* Remove any cached abbreviation
                                            expansion before saving *)

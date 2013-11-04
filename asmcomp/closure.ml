@@ -620,11 +620,13 @@ let rec close fenv cenv lam =
         match approx with
           Value_tuple a when n < Array.length a -> a.(n)
         | _ -> Value_unknown in
-      check_constant_result lam (Uprim(Pfield n, [ulam], mk_dbg l_loc)) fieldapprox
+      check_constant_result
+        lam (Uprim(Pfield n, [ulam], mk_dbg l_loc)) fieldapprox
   | Lprim(Psetfield(n, _), [{l_desc=Lprim(Pgetglobal id, [])}; lam]) ->
       let (ulam, approx) = close fenv cenv lam in
       (!global_approx).(n) <- approx;
-      (Uprim(Psetfield(n, false), [getglobal id l_loc; ulam], mk_dbg l_loc),
+      (Uprim(Psetfield(n, false), [getglobal id l_loc; ulam],
+             mk_dbg l_loc),
        Value_unknown)
   | Lprim(Praise, [{l_desc=Levent(arg, ev)}]) ->
       let (ulam, approx) = close fenv cenv arg in

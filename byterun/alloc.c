@@ -39,11 +39,11 @@ CAMLexport value caml_alloc (mlsize_t wosize, tag_t tag)
   if (wosize == 0){
     result = Atom (tag);
   }else if (wosize <= Max_young_wosize){
-       Alloc_small (result, wosize, tag, PROF_CAML_ALLOC);
+       Alloc_small (result, wosize, tag, PROF_CAML_ALLOC_1);
     if (tag < No_scan_tag){
       for (i = 0; i < wosize; i++) Field (result, i) = 0;
     }
-  }else{    result = caml_alloc_shr_loc (wosize, tag, PROF_CAML_ALLOC);
+  }else{    result = caml_alloc_shr_loc (wosize, tag, PROF_CAML_ALLOC_2);
     if (tag < No_scan_tag) memset (Bp_val (result), 0, Bsize_wsize (wosize));
     result = caml_check_urgent_gc (result);
   }
@@ -57,13 +57,13 @@ CAMLexport value caml_alloc_small (mlsize_t wosize, tag_t tag)
   Assert (wosize > 0);
   Assert (wosize <= Max_young_wosize);
   Assert (tag < 256);
-  Alloc_small (result, wosize, tag, PROF_CAML_ALLOC);
+  Alloc_small (result, wosize, tag, PROF_CAML_ALLOC_SMALL);
   return result;
 }
 
 CAMLexport value caml_alloc_tuple(mlsize_t n)
 {
-  return caml_alloc_loc(n, 0, PROF_TUPLE);
+  return caml_alloc_loc(n, 0, PROF_TUPLE_ALLOC_TUPLE);
 }
 
 CAMLexport value caml_alloc_string (mlsize_t len)
@@ -73,9 +73,9 @@ CAMLexport value caml_alloc_string (mlsize_t len)
   mlsize_t wosize = (len + sizeof (value)) / sizeof (value);
 
   if (wosize <= Max_young_wosize) {
-       Alloc_small (result, wosize, String_tag, PROF_STRING);
+       Alloc_small (result, wosize, String_tag, PROF_STRING_ALLOC_STRING_1);
   }else{
-    result = caml_alloc_shr_loc (wosize, String_tag, PROF_STRING);
+    result = caml_alloc_shr_loc (wosize, String_tag, PROF_STRING_ALLOC_STRING_2);
     result = caml_check_urgent_gc (result);
   }
   Field (result, wosize - 1) = 0;
@@ -110,13 +110,22 @@ CAMLexport value caml_alloc_final (mlsize_t len, final_fun fun,
 			       len * sizeof(value), mem, max, PROF_DUMMY);
 }
 
+CAMLexport value caml_copy_string_len(char const *s, mlsize_t len, int id)
+{
+  value res;
+
+  res = caml_alloc_string_loc(len, id);
+  memmove(String_val(res), s, len);
+  return res;
+}
+
 CAMLexport value caml_copy_string(char const *s)
 {
   int len;
   value res;
 
   len = strlen(s);
-  res = caml_alloc_string_loc(len, PROF_STRING);
+  res = caml_alloc_string_loc(len, PROF_STRING_CP_STRING);
   memmove(String_val(res), s, len);
   return res;
 }
@@ -144,7 +153,7 @@ CAMLexport value caml_alloc_array(value (*funct)(char const *),
   if (nbr == 0) {
     CAMLreturn (Atom(0));
   } else {
-    result = caml_alloc_loc (nbr, 0, PROF_ARRAYS);
+    result = caml_alloc_loc (nbr, 0, PROF_ARRAYS_ALLOC_ARRAY);
     for (n = 0; n < nbr; n++) {
       /* The two statements below must be separate because of evaluation
          order (don't take the address &Field(result, n) before
@@ -217,7 +226,7 @@ CAMLprim value caml_alloc_dummy_float (value size)
   mlsize_t wosize = Int_val(size) * Double_wosize;
 
   if (wosize == 0) return Atom(0);
-  return caml_alloc_loc (wosize, 0, PROF_FLOAT);
+  return caml_alloc_loc (wosize, 0, PROF_FLOAT_ALLOC_DUMMY_FLOAT);
 }
 
 CAMLprim value caml_update_dummy(value dummy, value newval)

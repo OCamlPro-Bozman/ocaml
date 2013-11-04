@@ -56,7 +56,7 @@ let operation = function
       Printf.sprintf "extcall \"%s\"%s" lbl (Debuginfo.to_string d)
   | Cload Word -> "load"
   | Cload c -> Printf.sprintf "load %s" (chunk c)
-  | Calloc -> "alloc"
+  | Calloc _ -> "alloc"
   | Cstore Word -> "store"
   | Cstore c -> Printf.sprintf "store %s" (chunk c)
   | Caddi -> "+"
@@ -88,6 +88,7 @@ let operation = function
 
 let rec expr ppf = function
   | Cconst_int n -> fprintf ppf "%i" n
+  (* | Cconst_header (n, id) -> fprintf ppf "%s, %i" (Nativeint.to_string n) id *)
   | Cconst_natint n -> fprintf ppf "%s" (Nativeint.to_string n)
   | Cconst_float s -> fprintf ppf "%s" s
   | Cconst_symbol s -> fprintf ppf "\"%s\"" s

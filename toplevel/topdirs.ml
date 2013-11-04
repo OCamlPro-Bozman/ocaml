@@ -82,7 +82,8 @@ let load_compunit ic filename ppf compunit =
   String.unsafe_blit "\000\000\000\001\000\000\000" 0
                      code (compunit.cu_codesize + 1) 7;
   let initial_symtable = Symtable.current_state() in
-  Symtable.patch_object code compunit.cu_reloc;
+  let locid_offset = Symtable.register_locations compunit.cu_reloc in
+  Symtable.patch_object code compunit.cu_reloc locid_offset;
   Symtable.update_global_table();
   begin try
     may_trace := true;

@@ -424,7 +424,7 @@ static void intern_rec(value *dest)
         header = (header_t) read64s();
         tag = Tag_hd(header);
         size = Wosize_hd(header);
-	prof = Prof_hd(header);
+	prof = (intern_old_mode)? PROF_INPUT_VALUES : Prof_hd(header);	  
         goto read_block;
 #else
         intern_cleanup();

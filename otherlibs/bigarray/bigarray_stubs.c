@@ -24,6 +24,7 @@
 #include "hash.h"
 #include "memory.h"
 #include "mlvalues.h"
+#include "profiling_ids.h"
 
 #define int8 caml_ba_int8
 #define uint8 caml_ba_uint8
@@ -166,7 +167,7 @@ caml_ba_alloc(int flags, int num_dims, void * data, intnat * dim)
 #else
   asize = sizeof(struct caml_ba_array) + (num_dims - 1) * sizeof(intnat);
 #endif
-  res = caml_alloc_custom(&caml_ba_ops, asize, size, CAML_BA_MAX_MEMORY);
+  res = caml_alloc_custom_loc(&caml_ba_ops, asize, size, CAML_BA_MAX_MEMORY, PROF_BIG_ARRAY);
   b = Caml_ba_array_val(res);
   b->data = data;
   b->num_dims = num_dims;

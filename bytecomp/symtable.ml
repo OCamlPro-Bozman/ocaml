@@ -72,6 +72,55 @@ let slot_for_literal cst =
   literal_table := (n, cst) :: !literal_table;
   n
 
+(* CAGO: location table *)
+module Chunk = Map.Make(struct type t = Location.t let compare = compare end)
+let chunk = ref Chunk.empty
+
+let location_table : Location.t array = Array.create (1 lsl 21) Location.none
+let location_pos = ref 0
+
+let get_location_table () = Array.sub location_table 0 !location_pos
+
+let reset_location_table () =
+  for i = 0 to !location_pos - 1 do
+    location_table.(i) <- Location.none
+  done;
+  location_pos := 0;
+  chunk := Chunk.empty
+
+let incr_location_pos () =
+  let n = !location_pos in
+  incr location_pos;
+  n
+
+let num_of_location loc =
+  try
+    Chunk.find loc !chunk
+  with Not_found ->
+    begin
+      let pos = incr_location_pos () in
+      location_table.(pos) <- loc;
+      chunk := Chunk.add loc pos !chunk;
+      pos
+    end
+
+let output_location_table outchan =
+  let table = get_location_table () in
+  output_binary_int outchan (Array.length table);
+  output_value outchan table
+
+external register_location_table: string -> int -> int
+  = "caml_register_location_table"
+
+let register_locations patchlist =
+  List.iter
+    (function
+      | (Reloc_locid loc, _) -> ignore (num_of_location loc)
+      | _ -> ())
+    patchlist;
+  let table = get_location_table () in
+  register_location_table (Marshal.to_string table []) (Array.length table)
+
 (* The C primitives *)
 
 let c_prim_table = ref(empty_numtable : string numtable)
@@ -183,7 +232,9 @@ let patch_int buff pos n =
   String.unsafe_set buff (pos + 2) (Char.unsafe_chr (n asr 16));
   String.unsafe_set buff (pos + 3) (Char.unsafe_chr (n asr 24))
 
-let patch_object buff patchlist =
+let locid_initial_offset = 1024 (* cf. memprof.c/next_location_id *)
+
+let patch_object buff patchlist locid_ofs =
   List.iter
     (function
         (Reloc_literal sc, pos) ->
@@ -193,7 +244,9 @@ let patch_object buff patchlist =
       | (Reloc_setglobal id, pos) ->
           patch_int buff pos (slot_for_setglobal id)
       | (Reloc_primitive name, pos) ->
-          patch_int buff pos (num_of_prim name))
+          patch_int buff pos (num_of_prim name)
+      | (Reloc_locid loc, pos) ->
+          patch_int buff pos (num_of_location loc + locid_ofs))
     patchlist
 
 (* Translate structured constants *)

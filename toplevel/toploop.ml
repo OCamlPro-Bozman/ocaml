@@ -126,7 +126,8 @@ let load_lambda ppf lam =
   let (code, code_size, reloc) = Emitcode.to_memory init_code fun_code in
   let can_free = (fun_code = []) in
   let initial_symtable = Symtable.current_state() in
-  Symtable.patch_object code reloc;
+  let locid_offset = Symtable.register_locations reloc in
+  Symtable.patch_object code reloc locid_offset;
   Symtable.check_global_initialized reloc;
   Symtable.update_global_table();
   try

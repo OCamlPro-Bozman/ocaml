@@ -33,7 +33,7 @@ let oper_result_type = function
       | Single | Double | Double_u -> typ_float
       | _ -> typ_int
       end
-  | Calloc -> typ_addr
+  | Calloc _ -> typ_addr
   | Cstore c -> typ_void
   | Caddi | Csubi | Cmuli | Cdivi | Cmodi |
     Cand | Cor | Cxor | Clsl | Clsr | Casr |
@@ -190,7 +190,7 @@ method is_simple_expr = function
   | Cop(op, args) ->
       begin match op with
         (* The following may have side effects *)
-      | Capply _ | Cextcall _ | Calloc | Cstore _ | Craise _ -> false
+      | Capply _ | Cextcall _ | Calloc _ | Cstore _ | Craise _ -> false
         (* The remaining operations are simple if their args are *)
       | _ ->
           List.for_all self#is_simple_expr args
@@ -230,7 +230,7 @@ method select_operation op args =
         (Istore(chunk, addr), [arg2; eloc])
         (* Inversion addr/datum in Istore *)
       end
-  | (Calloc, _) -> (Ialloc 0, args)
+  | (Calloc dbg_id, _) -> (Ialloc (0, dbg_id), args)
   | (Caddi, _) -> self#select_arith_comm Iadd args
   | (Csubi, _) -> self#select_arith Isub args
   | (Cmuli, [arg1; Cconst_int n]) ->
@@ -399,6 +399,16 @@ method emit_expr env exp =
     Cconst_int n ->
       let r = self#regs_for typ_int in
       Some(self#insert_op (Iconst_int(Nativeint.of_int n)) [||] r)
+  (* | Cconst_header(n, id) -> *)
+  (*     let header = *)
+  (*       Nativeint.add *)
+  (*         (Nativeint.shift_left (Nativeint.of_int id) 43) *)
+  (*         n in *)
+  (*     let r = self#regs_for typ_int in *)
+  (*     (\* xxxxxxxxxxxx *\) *)
+
+  (*     (\* xxxxxxxxxxxx *\) *)
+  (*     Some(self#insert_op (Iconst_int(header)) [||] r) *)
   | Cconst_natint n ->
       let r = self#regs_for typ_int in
       Some(self#insert_op (Iconst_int n) [||] r)
@@ -493,11 +503,11 @@ method emit_expr env exp =
                                     loc_arg (Proc.loc_external_results rd) in
               self#insert_move_results loc_res rd stack_ofs;
               Some rd
-          | Ialloc _ ->
+          | Ialloc (_, dbg_id) ->
               Proc.contains_calls := true;
               let rd = self#regs_for typ_addr in
               let size = size_expr env (Ctuple new_args) in
-              self#insert (Iop(Ialloc size)) [||] rd;
+              self#insert (Iop(Ialloc (size, dbg_id))) [||] rd;
               self#emit_stores env new_args rd;
               Some rd
           | op ->

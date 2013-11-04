@@ -15,7 +15,9 @@
 
 include Makefile.shared
 
-allopt: stdlib.cmxa std_exit.cmx allopt-$(PROFILING)
+allopt:
+	$(MAKE) stdlib.cmxa std_exit.cmx
+	$(MAKE) allopt-$(PROFILING)
 
 allopt-noprof:
 
@@ -25,7 +27,7 @@ allopt-prof: stdlib.p.cmxa std_exit.p.cmx
 installopt: installopt-default installopt-$(PROFILING)
 
 installopt-default:
-	cp stdlib.cmxa stdlib.a std_exit.o *.cmx $(LIBDIR)
+	cp stdlib.cmxa stdlib.a std_exit.o *.cmx *.cmt $(LIBDIR)
 	cd $(LIBDIR); $(RANLIB) stdlib.a
 
 installopt-noprof:

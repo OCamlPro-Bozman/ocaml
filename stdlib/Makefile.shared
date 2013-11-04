@@ -17,7 +17,7 @@ include ../config/Makefile
 RUNTIME=../boot/ocamlrun
 COMPILER=../ocamlc
 CAMLC=$(RUNTIME) $(COMPILER)
-COMPFLAGS=-strict-sequence -g -warn-error A -nostdlib
+COMPFLAGS=-bin-annot -strict-sequence -g -warn-error A -nostdlib
 OPTCOMPILER=../ocamlopt
 CAMLOPT=$(RUNTIME) $(OPTCOMPILER)
 OPTCOMPFLAGS=-warn-error A -nostdlib -g
@@ -41,7 +41,7 @@ OTHERS=array.cmo list.cmo char.cmo string.cmo sys.cmo \
 all: stdlib.cma std_exit.cmo camlheader camlheader_ur
 
 install: install-$(RUNTIMED)
-	cp stdlib.cma std_exit.cmo *.cmi *.mli *.ml camlheader camlheader_ur \
+	cp stdlib.cma std_exit.cmo *.cmi *.cmt *.mli *.ml camlheader camlheader_ur \
 	  $(LIBDIR)
 
 install-noruntimed:
@@ -65,6 +65,9 @@ clean::
 
 clean::
 	rm -f camlheader camlheader_ur camlheaderd
+
+clean::
+	rm -f *.cmt *.cmti
 
 .SUFFIXES: .mli .ml .cmi .cmo .cmx .p.cmx
 

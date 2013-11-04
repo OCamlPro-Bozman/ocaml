@@ -55,6 +55,7 @@
 #include "startup.h"
 #include "version.h"
 #include "gc.h"
+#include "memprof.h"
 #include <signal.h>
 
 #ifndef O_BINARY
@@ -201,6 +202,22 @@ static char * read_section(int fd, struct exec_trailer *trail, char *name)
   return data;
 }
 
+static void read_location_table(int fd, struct exec_trailer *trail)
+{
+  int32 len, elems;
+  unsigned char *data;
+
+  len = caml_seek_optional_section(fd, trail, "LOCS");
+  if (len < 4) return;
+  data = caml_stat_alloc(len);
+  if (read(fd, data, len) != len)
+    caml_fatal_error_arg("Fatal error: error reading section %s\n", "LOCS");
+  elems = (data[1] << 16) + (data[2] << 8) + data[3]; // elems < 2^21.
+
+  // TODO check coherence of the first id with static assumptions...
+  caml_register_loc_table ((char *)data + 4, len - 4, elems);
+}
+
 /* Invocation of ocamlrun: 4 cases.
 
    1.  runtime + bytecode
@@ -302,7 +319,6 @@ static void scanmult (char *opt, uintnat *var)
   }
 }
 
-extern int heap_profiling;
 static void parse_camlrunparam(void)
 {
   char *opt = getenv ("OCAMLRUNPARAM");
@@ -323,7 +339,7 @@ static void parse_camlrunparam(void)
       case 'b': caml_record_backtrace(Val_true); break;
       case 'p': caml_parser_trace = 1; break;
       case 'a': scanmult (opt, &p); caml_set_allocation_policy (p); break;
-      case 'm': heap_profiling = 1; break;
+      case 'm': caml_memprof_do_dump = 1; break;
       }
     }
   }
@@ -335,19 +351,7 @@ extern void caml_init_ieee_floats (void);
 extern void caml_signal_thread(void * lpParam);
 #endif
 
-/* Signal handler to dump heap image */
-void handle_signal(int signal) {
-  switch (signal) {
-  case SIGHUP:
-    really_dump_heap();
-    break;
-  default:
-    return;
-  }
-}
-
 /* Main entry point when loading code from a file */
-
 CAMLexport void caml_main(char **argv)
 {
   int fd, pos;
@@ -359,14 +363,6 @@ CAMLexport void caml_main(char **argv)
 #ifdef __linux__
   static char proc_self_exe[256];
 #endif
-   struct sigaction sa;
-   sa.sa_handler = &handle_signal;
-   sa.sa_flags = SA_RESTART;
-   signal(SIGHUP, handle_signal);
-   sigfillset(&sa.sa_mask);
-   if (sigaction(SIGHUP, &sa, NULL) == -1) {
-     perror("Error: cannot handle SIGHUP");
-   }
 
   /* Machine-dependent initialization of the floating-point hardware
      so that it behaves as much as possible as specified in IEEE */
@@ -381,6 +377,7 @@ CAMLexport void caml_main(char **argv)
   parse_camlrunparam();
   pos = 0;
   exe_name = argv[0];
+  caml_memprof_init();
 #ifdef __linux__
   if (caml_executable_name(proc_self_exe, sizeof(proc_self_exe)) == 0)
     exe_name = proc_self_exe;
@@ -403,6 +400,7 @@ CAMLexport void caml_main(char **argv)
       break;
     }
   }
+
   /* Read the table of contents (section descriptors) */
   caml_read_section_descriptors(fd, &trail);
   /* Initialize the abstract machine */
@@ -426,6 +424,8 @@ CAMLexport void caml_main(char **argv)
   caml_stat_free(shared_lib_path);
   caml_stat_free(shared_libs);
   caml_stat_free(req_prims);
+  /* Load the initial location table */
+  read_location_table(fd, &trail);
   /* Load the globals */
   caml_seek_section(fd, &trail, "DATA");
   chan = caml_open_descriptor_in(fd);

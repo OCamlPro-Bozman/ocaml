@@ -104,7 +104,7 @@ let compile_implementation ?toplevel prefixname ppf (size, lam) =
     Emitaux.output_channel := oc;
     Emit.begin_assembly();
     Closure.intro size lam
-    ++ Cmmgen.compunit size lam.Lambda.l_loc
+    ++ Cmmgen.compunit size
     ++ List.iter (compile_phrase ppf) ++ (fun () -> ());
     (match toplevel with None -> () | Some f -> compile_genfuns ppf f);
 
@@ -119,6 +119,8 @@ let compile_implementation ?toplevel prefixname ppf (size, lam) =
          (List.filter (fun s -> s <> "" && s.[0] <> '%')
             (List.map Primitive.native_name !Translmod.primitive_declarations))
       );
+
+    compile_phrase ppf (Cmmgen.location_table ());
 
     Emit.end_assembly();
     close_out oc

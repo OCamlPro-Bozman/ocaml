@@ -41,8 +41,7 @@ let current_unit =
     ui_curry_fun = [];
     ui_apply_fun = [];
     ui_send_fun = [];
-    ui_force_link = false;
-    ui_profiling = Hashtbl.create 1 (* CAGO: patch cmx format *)}
+    ui_force_link = false }
 
 let symbolname_for_pack pack name =
   match pack with
@@ -58,6 +57,8 @@ let symbolname_for_pack pack name =
       Buffer.add_string b name;
       Buffer.contents b
 
+let locid_table = Array.create (1 lsl 21) Location.none
+let locid_internal_offset = ref 0
 
 let reset ?packname name =
   Hashtbl.clear global_infos_table;
@@ -71,7 +72,7 @@ let reset ?packname name =
   current_unit.ui_apply_fun <- [];
   current_unit.ui_send_fun <- [];
   current_unit.ui_force_link <- false;
-  current_unit.ui_profiling <- Hashtbl.create 1; (* CAGO: patch cmx format *)
+  locid_internal_offset := 0;
   structured_constants := []
 
 let current_unit_infos () =
@@ -80,8 +81,21 @@ let current_unit_infos () =
 let current_unit_name () =
   current_unit.ui_name
 
-let update_profiling dbgs =
-  current_unit.ui_profiling <- dbgs
+module Chunk = Map.Make(struct type t = Location.t let compare = compare end)
+let chunk = ref Chunk.empty
+
+let current_location_table () =
+  Array.sub locid_table 0 !locid_internal_offset
+
+let num_of_location loc =
+ try
+   Chunk.find loc !chunk
+ with Not_found ->
+   let pos = !locid_internal_offset in
+   locid_table.(pos) <- loc;
+   incr locid_internal_offset;
+   chunk := Chunk.add loc pos !chunk;
+   pos
 
 let make_symbol ?(unitname = current_unit.ui_symbol) idopt =
   let prefix = "caml" ^ unitname in
@@ -206,8 +220,6 @@ let write_unit_info info filename =
 let save_unit_info filename =
   current_unit.ui_imports_cmi <- Env.imported_units();
   write_unit_info current_unit filename
-
-
 
 let const_label = ref 0
 

@@ -34,6 +34,8 @@
 #include "stack.h"
 #include "sys.h"
 #include "natdynlink.h"
+#include "memprof.h"
+#include <signal.h>
 #ifdef HAS_UI
 #include "ui.h"
 #endif
@@ -117,7 +119,6 @@ static void scanmult (char *opt, uintnat *var)
   }
 }
 
-extern int heap_profiling;
 static void parse_camlrunparam(void)
 {
   char *opt = getenv ("OCAMLRUNPARAM");
@@ -138,7 +139,7 @@ static void parse_camlrunparam(void)
       case 'b': caml_record_backtrace(Val_true); break;
       case 'p': caml_parser_trace = 1; break;
       case 'a': scanmult (opt, &p); caml_set_allocation_policy (p); break;
-      case 'm': heap_profiling = 1; break;
+      case 'm': caml_memprof_do_dump = 1; break;
       }
     }
   }
@@ -151,7 +152,7 @@ uint64* caml_major_tracing_array = NULL;
 uint64* caml_major_tracing_array_end = NULL;
 uint64 tracing_array_len = (1 << 21);
 
-static init_tracing_arrays (void) {
+static void init_tracing_arrays (void) {
   /* ## major heap tracing */
   caml_major_tracing_array =
     (uint64*) calloc(tracing_array_len, 1);
@@ -176,7 +177,7 @@ void caml_main(char **argv)
 #endif
   value res;
   char tos;
-
+  /* Check the OCAML_MEMPROF_MARSHAL variable to dump file with or without profiling id */
   caml_init_ieee_floats();
   caml_init_custom_operations();
 #ifdef DEBUG
@@ -184,6 +185,7 @@ void caml_main(char **argv)
 #endif
   caml_top_of_stack = &tos;
   parse_camlrunparam();
+  caml_memprof_init();
   init_tracing_arrays();	/* CAGO: initialize tracing arrays */
   caml_init_gc (minor_heap_init, heap_size_init, heap_chunk_init,
                 percent_free_init, max_percent_free_init);

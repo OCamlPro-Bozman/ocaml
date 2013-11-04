@@ -20,11 +20,12 @@ CAMLOPT=$(CAMLRUN) ../ocamlopt -nostdlib -I ../stdlib
 CAMLLEX=$(CAMLRUN) ../boot/ocamllex
 INCLUDES=-I ../utils -I ../parsing -I ../typing -I ../bytecomp -I ../asmcomp \
 	 -I ../driver
-COMPFLAGS= -warn-error A $(INCLUDES)
+COMPFLAGS= -bin-annot -warn-error A $(INCLUDES)
 LINKFLAGS=$(INCLUDES)
 
 all: ocamldep ocamlprof ocamlcp ocamloptp ocamlmktop ocamlmklib dumpobj \
-     objinfo read_cmt
+     objinfo read_cmt 
+
 # scrapelabels addlabels
 
 .PHONY: all
@@ -51,6 +52,8 @@ ocamldep.opt: depend.cmi $(CAMLDEP_OBJ:.cmo=.cmx)
 clean::
 	if test -f ocamldep; then mv -f ocamldep ocamldep.bak; else :; fi
 	rm -f ocamldep.opt
+clean::
+	rm -f *.cmt *.cmti
 
 install::
 	cp ocamldep $(BINDIR)/ocamldep$(EXE)
@@ -74,16 +77,18 @@ ocamloptp: ocamloptp.cmo
 	$(CAMLC) $(LINKFLAGS) -o ocamloptp warnings.cmo main_args.cmo \
 	         ocamloptp.cmo
 
-opt:: profiling.cmx
+opt:: profiling.cmx typedtreeIter.cmx
 
 install::
 	cp ocamlprof $(BINDIR)/ocamlprof$(EXE)
 	cp ocamlcp $(BINDIR)/ocamlcp$(EXE)
 	cp ocamloptp $(BINDIR)/ocamloptp$(EXE)
 	cp profiling.cmi profiling.cmo $(LIBDIR)
+	cp typedtreeIter.cmi typedtreeIter.cmo $(LIBDIR)
 
 installopt::
 	cp profiling.cmx profiling.o $(LIBDIR)
+	cp typedtreeIter.cmx typedtreeIter.o $(LIBDIR)
 
 clean::
 	rm -f ocamlprof ocamlcp ocamloptp

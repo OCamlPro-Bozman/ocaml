@@ -29,6 +29,7 @@
 #else
 #include "stacks.h"
 #endif
+#include "profiling_ids.h"
 
 #ifndef NATIVE_CODE
 extern uintnat caml_max_stack_size;    /* defined in stacks.c */
@@ -455,13 +456,6 @@ CAMLprim value caml_gc_major_slice (value v)
   Assert (Is_long (v));
   caml_empty_minor_heap ();
   return Val_long (caml_major_collection_slice (Long_val (v)));
-}
-
-CAMLprim value dump_heap (value unit)
-{
-  caml_minor_collection();
-  really_dump_heap();
-  return Val_unit;
 }
 
 CAMLprim value caml_gc_compaction(value v)

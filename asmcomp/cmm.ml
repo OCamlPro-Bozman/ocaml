@@ -70,7 +70,7 @@ type operation =
     Capply of machtype * Debuginfo.t
   | Cextcall of string * machtype * bool * Debuginfo.t
   | Cload of memory_chunk
-  | Calloc
+  | Calloc of int
   | Cstore of memory_chunk
   | Caddi | Csubi | Cmuli | Cdivi | Cmodi
   | Cand | Cor | Cxor | Clsl | Clsr | Casr

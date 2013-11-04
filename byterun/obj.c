@@ -75,6 +75,11 @@ CAMLprim value caml_obj_tag(value arg)
     return Val_int (1001);   /* out_of_heap_tag */
   }
 }
+CAMLprim value caml_obj_locid(value arg)
+{
+  if (!Is_in_value_area (arg)) caml_failwith("caml_obj_locid");
+  return Val_int(Prof_val(arg));
+}
 
 CAMLprim value caml_obj_set_tag (value arg, value new_tag)
 {
@@ -91,7 +96,7 @@ CAMLprim value caml_obj_block(value tag, value size)
   sz = Long_val(size);
   tg = Long_val(tag);
   if (sz == 0) return Atom(tg);
-  res = caml_alloc_loc(sz, tg, PROF_OBJ);
+  res = caml_alloc_loc(sz, tg, PROF_OBJ_BLOCK);
   for (i = 0; i < sz; i++)
     Field(res, i) = Val_long(0);
 
@@ -163,9 +168,9 @@ CAMLprim value caml_obj_truncate (value v, value newsize)
      ref_table. */
   Field (v, new_wosize) =
        /* CAGO: patch Make_header */
-       Make_header(Wosize_whsize (wosize-new_wosize), 1, Caml_white, PROF_OBJ);
+       Make_header(Wosize_whsize (wosize-new_wosize), 1, Caml_white, PROF_OBJ_TRUNCATE_1);
   /* CAGO: patch Make_header */
-  Hd_val (v) = Make_header(new_wosize, tag, color, PROF_OBJ);
+  Hd_val (v) = Make_header(new_wosize, tag, color, PROF_OBJ_TRUNCATE_2);
   return Val_unit;
 }
 
@@ -194,7 +199,7 @@ CAMLprim value caml_lazy_make_forward (value v)
   CAMLparam1 (v);
   CAMLlocal1 (res);
 
-  res = caml_alloc_small_loc (1, Forward_tag, PROF_OBJ);
+  res = caml_alloc_small_loc (1, Forward_tag, PROF_OBJ_MK_FORWARD);
   Field (res, 0) = v;
   CAMLreturn (res);
 }

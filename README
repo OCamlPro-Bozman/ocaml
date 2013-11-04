@@ -43,7 +43,7 @@ a simple graph.
 3- Then, ocamlc and ocamlrun is now available. Compile your application and to dump the heap, you have 3 choices:
 
   * Using OCAMLRUNPARAM=m to dump the heap image after each major garbage collection
-   e.g.: OCAMLRUNPARAM=m ocamlc -o exe my_project.ml
+   e.g.: OCAMLRUNPARAM=m ocamlopt -o exe my_project.ml
   
   * Using a signal: when receiving a HUP signal, the application will dump its
    memory on disk for future profiling.
@@ -68,9 +68,9 @@ a simple graph.
 
   If you want more details about location and type, you can add the -loc option:
   * on several heap images
-   > profiler -loc -prof my_exe.prof -heaps 1432
+   > profiler -loc -sizes 1432
   * on one heap image
-   > profiler -loc -prof my_exe.prof -heap heap.dump.1432.5
+   > profiler -loc -size heap.dump.1432.5
  
 
 === Contact http://www.ocamlpro.com

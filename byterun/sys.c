@@ -71,11 +71,11 @@ CAMLexport void caml_sys_error(value arg)
 
   err = error_message();
   if (arg == NO_ARG) {
-    str = caml_copy_string_loc(err, PROF_CAML_SYS_ERROR);
+    str = caml_copy_string_loc(err, PROF_CAML_SYS_ERROR_1);
   } else {
     int err_len = strlen(err);
     int arg_len = caml_string_length(arg);
-    str = caml_alloc_string_loc(arg_len + 2 + err_len, PROF_CAML_SYS_ERROR);
+    str = caml_alloc_string_loc(arg_len + 2 + err_len, PROF_CAML_SYS_ERROR_2);
     memmove(&Byte(str, 0), String_val(arg), arg_len);
     memmove(&Byte(str, arg_len), ": ", 2);
     memmove(&Byte(str, arg_len + 2), err, err_len);
@@ -206,7 +206,7 @@ CAMLprim value caml_sys_getenv(value var)
 
   res = getenv(String_val(var));
   if (res == 0) caml_raise_not_found();
-  return caml_copy_string_loc(res, PROF_GETENV);
+  return caml_copy_string_loc(res, PROF_CAML_SYS_GETENV);
 }
 
 char * caml_exe_name;

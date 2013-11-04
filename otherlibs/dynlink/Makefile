@@ -20,9 +20,10 @@ include ../../config/Makefile
 CAMLC=../../boot/ocamlrun ../../ocamlc
 CAMLOPT=../../ocamlcompopt.sh
 INCLUDES=-I ../../utils -I ../../typing -I ../../bytecomp -I ../../asmcomp
-COMPFLAGS=-warn-error A -I ../../stdlib $(INCLUDES)
+COMPFLAGS=-bin-annot -warn-error A -I ../../stdlib $(INCLUDES)
 
 OBJS=dynlinkaux.cmo dynlink.cmo
+CMTFILES= $(OBJS:.cmo=.cmt)
 
 COMPILEROBJS=\
   ../../utils/misc.cmo ../../utils/config.cmo ../../utils/clflags.cmo \
@@ -41,6 +42,7 @@ COMPILEROBJS=\
   ../../bytecomp/symtable.cmo
 
 NATOBJS=dynlink.cmx
+CMTFILESNAT=natdynlink.cmt
 
 all: dynlink.cma extract_crc
 
@@ -58,20 +60,23 @@ dynlinkaux.cmo: $(COMPILEROBJS)
 dynlinkaux.cmi: dynlinkaux.cmo
 
 dynlink.cmx: dynlink.cmi natdynlink.ml
-	cp natdynlink.ml  dynlink.mlopt
+	[ ! -f dynlink.cmt ] || mv dynlink.cmt dynlink.byte.cmt
+	cp natdynlink.ml dynlink.mlopt
 	$(CAMLOPT) -c $(COMPFLAGS) -impl dynlink.mlopt
+	mv dynlink.cmt natdynlink.cmt
 	rm -f dynlink.mlopt
+	[ ! -f dynlink.byte.cmt ] || mv dynlink.byte.cmt dynlink.cmt
 
 extract_crc: dynlink.cma extract_crc.cmo
 	$(CAMLC) $(COMPFLAGS) -o extract_crc dynlink.cma extract_crc.cmo
 
 install:
-	cp dynlink.cmi dynlink.cma dynlink.mli $(LIBDIR)
+	cp dynlink.cmi dynlink.cma dynlink.mli $(CMTFILES) $(LIBDIR)
 	cp extract_crc $(LIBDIR)/extract_crc$(EXE)
 
 installopt:
 	if $(NATDYNLINK); then \
-	  cp $(NATOBJS) dynlink.cmxa dynlink.$(A) $(LIBDIR) && \
+	  cp $(NATOBJS)  $(CMTFILESNAT) dynlink.cmxa dynlink.$(A) $(LIBDIR) && \
 	  cd $(LIBDIR) && $(RANLIB) dynlink.$(A); \
 	fi
 

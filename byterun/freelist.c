@@ -134,7 +134,7 @@ static char *allocate_block (mlsize_t wh_sz, int flpi, char *prev, char *cur)
          In case 0, it gives an invalid header to the block.  The function
          calling [caml_fl_allocate] will overwrite it. */
     /* CAGO: patch Make_header */
-    Hd_op (cur) = Make_header(0, 0, Caml_white, PROF_FREELIST);
+    Hd_op (cur) = Make_header(0, 0, Caml_white, PROF_FREELIST_ALLOC_BLOCK_1);
     if (policy == Policy_first_fit){
       if (flpi + 1 < flp_size && flp[flpi + 1] == cur){
         flp[flpi + 1] = prev;
@@ -146,7 +146,7 @@ static char *allocate_block (mlsize_t wh_sz, int flpi, char *prev, char *cur)
   }else{                                                        /* Case 2. */
     caml_fl_cur_size -= wh_sz;
     /* CAGO: patch Make_header */
-    Hd_op (cur) = Make_header(Wosize_hd (h) - wh_sz, 0, Caml_blue, PROF_FREELIST);
+    Hd_op (cur) = Make_header(Wosize_hd (h) - wh_sz, 0, Caml_blue, PROF_FREELIST_ALLOC_BLOCK_2);
   }
   if (policy == Policy_next_fit) fl_prev = prev;
   return cur + Bosize_hd (h) - Bsize_wsize (wh_sz);
@@ -407,7 +407,7 @@ char *caml_fl_merge_block (char *bp)
     mlsize_t bp_whsz = Whsize_bp (bp);
     if (bp_whsz <= Max_wosize){
 	 /* CAGO: patch Make_header */
-	 hd = Make_header(bp_whsz, 0, Caml_white, PROF_FREELIST);
+	 hd = Make_header(bp_whsz, 0, Caml_white, PROF_FREELIST_MERGE_BLOCK_1);
       bp = last_fragment;
       Hd_bp (bp) = hd;
       caml_fl_cur_size += Whsize_wosize (0);
@@ -425,7 +425,7 @@ char *caml_fl_merge_block (char *bp)
       Next (prev) = next_cur;
       if (policy == Policy_next_fit && fl_prev == cur) fl_prev = prev;
       /* CAGO: patch Make_header */
-      hd = Make_header(Wosize_hd (hd) + cur_whsz, 0, Caml_blue, PROF_FREELIST);
+      hd = Make_header(Wosize_hd (hd) + cur_whsz, 0, Caml_blue, PROF_FREELIST_MERGE_BLOCK_2);
       Hd_bp (bp) = hd;
       adj = bp + Bosize_hd (hd);
 #ifdef DEBUG
@@ -442,7 +442,7 @@ char *caml_fl_merge_block (char *bp)
   if (prev + Bsize_wsize (prev_wosz) == Hp_bp (bp)
       && prev_wosz + Whsize_hd (hd) < Max_wosize){
        /* CAGO: patch Make_header */
-       Hd_bp (prev) = Make_header(prev_wosz + Whsize_hd (hd), 0, Caml_blue, PROF_FREELIST);
+       Hd_bp (prev) = Make_header(prev_wosz + Whsize_hd (hd), 0, Caml_blue, PROF_FREELIST_MERGE_BLOCK_3);
 #ifdef DEBUG
     Hd_bp (bp) = Debug_free_major;
 #endif
@@ -530,7 +530,7 @@ void caml_make_free_blocks (value *p, mlsize_t size, int do_merge, int color)
       sz = size;
     }
     /* CAGO: patch Make_header */
-    *(header_t *)p = Make_header(Wosize_whsize (sz), 0, color, PROF_FREELIST);
+    *(header_t *)p = Make_header(Wosize_whsize (sz), 0, color, PROF_FREELIST_MK_FREE_BLOCK);
     if (do_merge) caml_fl_merge_block (Bp_hp (p));
     size -= sz;
     p += sz;

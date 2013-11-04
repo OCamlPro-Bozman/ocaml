@@ -197,13 +197,20 @@ STDLIB_MLIS=../stdlib/*.mli \
 	../otherlibs/bigarray/bigarray.mli \
 	../otherlibs/num/num.mli
 
-all: exe lib generators #manpages
+all:
+	$(MAKE) exe
+	$(MAKE) lib
+	$(MAKE) generators
+	$(MAKE) manpages
 
 exe: $(OCAMLDOC)
 lib: $(OCAMLDOC_LIBCMA) $(OCAMLDOC_LIBCMI) $(ODOC_TEST)
 generators: $(GENERATORS_CMOS)
 
-opt.opt: exeopt libopt generatorsopt
+opt.opt:
+	$(MAKE) exeopt
+	$(MAKE) libopt
+	$(MAKE) generatorsopt
 exeopt: $(OCAMLDOC_OPT)
 libopt: $(OCAMLDOC_LIBCMXA) $(OCAMLDOC_LIBCMI)
 generatorsopt: $(GENERATORS_CMXS)
@@ -249,12 +256,11 @@ odoc_see_lexer.ml: odoc_see_lexer.mll
 
 .SUFFIXES: .mll .mly .ml .mli .cmo .cmi .cmx .cmxs
 
-# .ml.cmo:
-# 	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
+.ml.cmo:
+	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
 
 .mli.cmi:
-#	# $(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
-	$(OCAMLOPT) $(OCAMLPP) $(COMPFLAGS) -c $<
+	$(OCAMLC) $(OCAMLPP) $(COMPFLAGS) -c $<
 
 .ml.cmx:
 	$(OCAMLOPT) $(OCAMLPP) $(COMPFLAGS) -c $<

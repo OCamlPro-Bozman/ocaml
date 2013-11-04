@@ -35,7 +35,8 @@ static uintnat size_32;  /* Size in words of 32-bit block for struct. */
 static uintnat size_64;  /* Size in words of 64-bit block for struct. */
 
 static int extern_ignore_sharing; /* Flag to ignore sharing */
-static int extern_closures;     /* Flag to allow externing code pointers */
+static int extern_closures;       /* Flag to allow externing code pointers */
+static int extern_locids;         /* Flag to allow externing location ids */
 
 /* Trail mechanism to undo forwarding pointers put inside objects */
 
@@ -351,16 +352,17 @@ static void writecode64(int code, intnat val)
   *extern_ptr ++ = code;
   for (i = 64 - 8; i >= 0; i -= 8) *extern_ptr++ = val >> i;
 }
+#endif
 
 /* CAGO: Write profiling information during serialization */
 static void writeprof(profiling_t val) {
+  if (!extern_locids) return;
   if (extern_ptr + 4 > extern_limit) grow_extern_output(4);
   extern_ptr[0] = val >> 16;
   extern_ptr[1] = val >> 8;
   extern_ptr[2] = val;
   extern_ptr += 3;
 }
-#endif
 
 /* Marshal the given value in the output buffer */
 
@@ -509,7 +511,10 @@ static void extern_rec(value v)
 	writeprof(prof);
 #ifdef ARCH_SIXTYFOUR
       } else if (hd >= ((uintnat)1 << 32)) {
-        writecode64(CODE_BLOCK64, Whitehd_hd (hd));
+        if (!extern_locids)
+	  writecode64(CODE_BLOCK64, Whitehd_hd (hd) & 0x000007ffffffffff);
+	else 
+	  writecode64(CODE_BLOCK64, Whitehd_hd (hd));
 #endif
       } else {
         writecode32(CODE_BLOCK32, Whitehd_hd (hd));
@@ -552,28 +557,27 @@ static void extern_rec(value v)
   /* Never reached as function leaves with return */
 }
 
-enum { NO_SHARING = 1, CLOSURES = 2 };
-static int extern_flags[] = { NO_SHARING, CLOSURES };
-/* CAGO: FIX THIS new magic number, must be different old one */
-#define NEW_INTEXT_MAGIC_NUMBER (0x42)
+enum { NO_SHARING = 1, CLOSURES = 2, PROFILING = 4 };
+static int extern_flags[] = { NO_SHARING, CLOSURES, PROFILING };
 
 static intnat extern_value(value v, value flags)
 {
   intnat res_len;
   int fl;
+
   /* Parse flag list */
   fl = caml_convert_flag_list(flags, extern_flags);
   extern_ignore_sharing = fl & NO_SHARING;
   extern_closures = fl & CLOSURES;
+  extern_locids =
+    ((fl & CLOSURES) || getenv("OCAML_MEMPROF_MARSHAL")) ? 1 : 0;
   /* Initializations */
   init_extern_trail();
   obj_counter = 0;
   size_32 = 0;
   size_64 = 0;
   /* Write magic number */
-  // write32(Intext_magic_number);
-  /* CAGO: write new magic number */
-  write32(NEW_INTEXT_MAGIC_NUMBER);
+  write32(Intext_magic_number + extern_locids);
   /* Set aside space for the sizes */
   extern_ptr += 4*4;
   /* Marshal the object */

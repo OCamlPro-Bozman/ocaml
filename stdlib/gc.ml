@@ -101,4 +101,4 @@ let create_alarm f =
 
 let delete_alarm a = a := false;;
 
-external dump_heap : unit -> unit = "dump_heap"
+external dump_heap : string -> unit = "caml_dump_heap"

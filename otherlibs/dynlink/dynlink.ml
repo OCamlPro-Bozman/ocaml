@@ -177,8 +177,9 @@ let load_compunit ic file_name file_digest compunit =
   String.unsafe_set code (compunit.cu_codesize + 6) '\000';
   String.unsafe_set code (compunit.cu_codesize + 7) '\000';
   let initial_symtable = Symtable.current_state() in
+  let locid_offset = Symtable.register_locations compunit.cu_reloc in
   begin try
-    Symtable.patch_object code compunit.cu_reloc;
+    Symtable.patch_object code compunit.cu_reloc locid_offset;
     Symtable.check_global_initialized compunit.cu_reloc;
     Symtable.update_global_table()
   with Symtable.Error error ->
@@ -190,6 +191,7 @@ let load_compunit ic file_name file_digest compunit =
       | _ -> assert false in
     raise(Error(Linking_error (file_name, new_error)))
   end;
+  Symtable.reset_location_table ();
   (* PR#5215: identify this code fragment by
      digest of file contents + unit name.
      Unit name is needed for .cma files, which produce several code fragments.*)

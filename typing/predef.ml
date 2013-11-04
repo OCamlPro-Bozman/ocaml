@@ -238,7 +238,7 @@ let builtin_values =
        ident_invalid_argument;
        ident_failure; ident_not_found; ident_sys_error; ident_end_of_file;
        ident_division_by_zero; ident_sys_blocked_io;
-       ident_assert_failure; ident_undefined_recursive_module ]
+       ident_assert_failure; ident_undefined_recursive_module; ]
 
 (* Start non-predef identifiers at 1000.  This way, more predefs can
    be defined in this file (above!) without breaking .cmi

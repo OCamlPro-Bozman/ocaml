@@ -27,7 +27,8 @@ val current_unit_infos: unit -> unit_infos
 val current_unit_name: unit -> string
         (* Return the name of the unit being compiled *)
 
-val update_profiling :  (int, Debuginfo.t) Hashtbl.t -> unit
+val num_of_location: Location.t -> int
+val current_location_table: unit -> Location.t array
 
 val make_symbol: ?unitname:string -> string option -> string
         (* [make_symbol ~unitname:u None] returns the asm symbol that
