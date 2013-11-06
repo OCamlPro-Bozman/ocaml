@@ -38,7 +38,7 @@ a simple graph.
 
 2- Compile OCaml and install: bytecode and native !
         > ./configure -prefix /path/
-        > make world world.opt
+        > make world && make world.opt ## dot not use make world world.opt
 
 3- Then, ocamlc and ocamlrun is now available. Compile your application and to dump the heap, you have 3 choices:
 
