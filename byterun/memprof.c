@@ -224,7 +224,7 @@ extern char *caml_exe_name;
 #ifdef NATIVE_CODE
 extern char globals_map[];
 extern value caml_globals[];
-extern value caml_globals_info[]; /* CAGO FIXME */
+/* extern */ value caml_globals_info[]; /* CAGO FIXME */
 #endif
 
 void really_dump_heap (char *dumpname)

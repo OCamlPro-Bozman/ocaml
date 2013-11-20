@@ -643,10 +643,7 @@ static void intern_add_to_heap(mlsize_t whsize)
 value caml_input_val(struct channel *chan)
 {
   uint32 magic;
-  mlsize_t block_len, num_objects, size_64, whsize;
-#ifndef ARCH_SIXTYFOUR
-  mlsize_t size_32
-#endif
+  mlsize_t block_len, num_objects, size_32, size_64, whsize;
   char * block;
   value res;
 
@@ -657,9 +654,7 @@ value caml_input_val(struct channel *chan)
   //if (magic != Intext_magic_number) caml_failwith("input_value: bad object");
   block_len = caml_getword(chan);
   num_objects = caml_getword(chan);
-#ifndef ARCH_SIXTYFOUR
   size_32 = caml_getword(chan);
-#endif
   size_64 = caml_getword(chan);
   /* Read block from channel */
   block = caml_stat_alloc(block_len);
@@ -706,18 +701,13 @@ CAMLprim value caml_input_value(value vchan)
 CAMLexport value caml_input_val_from_string_loc(value str, intnat ofs, profiling_t id)
 {
   CAMLparam1 (str);
-  mlsize_t num_objects, size_64, whsize;
-#ifndef ARCH_SIXTYFOUR
-  mlsize_t size_32;
-#endif
+  mlsize_t num_objects, size_32, size_64, whsize;
   CAMLlocal1 (obj);
 
   intern_src = &Byte_u(str, ofs + 2*4);
   intern_input_malloced = 0;
   num_objects = read32u();
-#ifndef ARCH_SIXTYFOUR
   size_32 = read32u();
-#endif
   size_64 = read32u();
   /* Allocate result */
 #ifdef ARCH_SIXTYFOUR
@@ -770,16 +760,11 @@ CAMLprim value caml_input_value_from_string_loc(value str, value ofs, profiling_
 
 static value input_val_from_block_loc(profiling_t id)
 {
-  mlsize_t num_objects, size_64, whsize;
-#ifndef ARCH_SIXTYFOUR
-  mlsize_t size_32;
-#endif
+  mlsize_t num_objects, size_32, size_64, whsize;
   value obj;
 
   num_objects = read32u();
-#ifndef ARCH_SIXTYFOUR
   size_32 = read32u();
-#endif
   size_64 = read32u();
   /* Allocate result */
 #ifdef ARCH_SIXTYFOUR
@@ -830,7 +815,7 @@ CAMLexport value caml_input_value_from_block(char * data, intnat len)
 //  if (magic != Intext_magic_number)
 //    caml_failwith("input_value_from_block: bad object");
   block_len = read32u();
-  if (5 * 4 + block_len > len)
+  if (5*4 + block_len > len)
     caml_failwith("input_value_from_block: bad block length");
   obj = input_val_from_block_loc(PROF_CAML_INP_VAL_FROM_BLOCK);
   return obj;
