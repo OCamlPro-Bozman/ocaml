@@ -511,7 +511,7 @@ CAMLprim value loc_from_block(value v, value *ptr) {
 }
 
 CAMLprim value caml_gc_iter_heap () {
-     caml_scan_global_roots (loc_from_block);
+     /* caml_scan_global_roots (loc_from_block); */
      return Val_unit;
 }
 

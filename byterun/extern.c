@@ -557,8 +557,8 @@ static void extern_rec(value v)
   /* Never reached as function leaves with return */
 }
 
-enum { NO_SHARING = 1, CLOSURES = 2, PROFILING = 4 };
-static int extern_flags[] = { NO_SHARING, CLOSURES, PROFILING };
+enum { NO_SHARING = 1, CLOSURES = 2, MEM_PROFILING = 4 };
+static int extern_flags[] = { NO_SHARING, CLOSURES, MEM_PROFILING };
 
 static intnat extern_value(value v, value flags)
 {
@@ -613,13 +613,13 @@ static intnat extern_value(value v, value flags)
 
 void caml_output_val(struct channel *chan, value v, value flags)
 {
-  intnat len;
+  /* intnat len; */
   struct output_block * blk, * nextblk;
 
   if (! caml_channel_binary_mode(chan))
     caml_failwith("output_value: not a binary channel");
   init_extern_output();
-  len = extern_value(v, flags);
+  /* len =  */extern_value(v, flags);
   /* During [caml_really_putblock], concurrent [caml_output_val] operations
      can take place (via signal handlers or context switching in systhreads),
      and [extern_output_first] may change. So, save it in a local variable. */

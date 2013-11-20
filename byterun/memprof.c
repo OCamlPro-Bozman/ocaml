@@ -224,7 +224,7 @@ extern char *caml_exe_name;
 #ifdef NATIVE_CODE
 extern char globals_map[];
 extern value caml_globals[];
- /* extern */ value caml_globals_info[]; /* CAGO FIXME */
+extern value caml_globals_info[]; /* CAGO FIXME */
 #endif
 
 void really_dump_heap (char *dumpname)
@@ -237,7 +237,7 @@ void really_dump_heap (char *dumpname)
   if (strcmp(dumpname, "") != 0)
     sprintf(filename, "memprof.%d.%s.%d.dump", getpid(), dumpname, heap_number++);
   else
-    sprintf(filename, "memprof.%d.%d.dump", getpid(), dumpname, heap_number++);
+    sprintf(filename, "memprof.%d.%d.dump", getpid(), heap_number++);
 
   file_oc = fopen(filename, "w");
 
